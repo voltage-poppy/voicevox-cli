@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"flag"
@@ -8,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -152,6 +154,9 @@ func playback(params *Params, b []byte) error {
 func main() {
 	log.SetFlags(log.Lshortfile)
 	cfg := config{}
+
+	fromStdIn := flag.Bool("stdin", false, "whether to read input from stdin")
+
 	flag.StringVar(&cfg.endpoint, "endpoint", "http://localhost:50021", "api endpoint")
 	flag.IntVar(&cfg.speaker, "speaker", 0, "speaker")
 	flag.StringVar(&cfg.output, "o", "", "output wav file")
@@ -171,7 +176,26 @@ func main() {
 	}
 	spkID := spk.Styles[cfg.style].ID
 	log.Println(spk.Name, spk.Styles[cfg.style].Name, spkID)
-	params, err := getQuery(cfg, spkID, strings.Join(flag.Args(), " "))
+
+	var input string
+	if *fromStdIn {
+		reader := bufio.NewReader(os.Stdin)
+		var err error
+		input, _ = reader.ReadString('\n')
+		if err != nil {
+			log.Fatal("[ERROR]", err)
+		}
+	} else {
+		input = strings.Join(flag.Args(), " ")
+	}
+
+	log.Println("[TEXT]", input)
+	if len(input) == 0 {
+		log.Fatal("input is empty")
+		os.Exit(1)
+	}
+
+	params, err := getQuery(cfg, spkID, input)
 	if err != nil {
 		log.Fatal(err)
 	}
